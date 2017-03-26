@@ -1,18 +1,15 @@
 <?php
 
 
-class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
+class FacetWP_Facet_Hierarchy_Select{
 
 	var $settings;
+	var $terms;
+	var $depth;
 
 	function __construct() {
 		$this->label = __( 'Hierarchy Select', 'fwp' );
 		add_filter( 'facetwp_assets', array( $this, 'set_assets' ) );
-		add_filter( 'facetwp_render_output', function ( $a ) {
-			$a['settings']['hierarchy_select'] = $this->settings;
-
-			return $a;
-		} );
 	}
 
 	/**
@@ -34,29 +31,9 @@ class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
 	function load_values( $params ) {
 		global $wpdb;
 
-		$facet = $params['facet'];
-
-		// Apply filtering (ignore the facet's current selection)
-		if ( isset( FWP()->or_values ) && ( 1 < count( FWP()->or_values ) || ! isset( FWP()->or_values[ $facet['name'] ] ) ) ) {
-			$post_ids  = array();
-			$or_values = FWP()->or_values; // Preserve the original
-			unset( $or_values[ $facet['name'] ] );
-
-			$counter = 0;
-			foreach ( $or_values as $name => $vals ) {
-				$post_ids = ( 0 == $counter ) ? $vals : array_intersect( $post_ids, $vals );
-				$counter ++;
-			}
-
-			// Return only applicable results
-			$post_ids = array_intersect( $post_ids, FWP()->unfiltered_post_ids );
-		} else {
-			$post_ids = FWP()->unfiltered_post_ids;
-		}
-
-		$post_ids     = empty( $post_ids ) ? array( 0 ) : $post_ids;
-		$where_clause = ' AND post_id IN (' . implode( ',', $post_ids ) . ')';
+		$facet        = $params['facet'];
 		$from_clause  = $wpdb->prefix . 'facetwp_index f';
+		$where_clause = $params['where_clause'];
 
 		// Orderby
 		$orderby = 'counter DESC, f.facet_display_value ASC';
@@ -66,80 +43,131 @@ class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
 			$orderby = 'f.facet_value ASC';
 		}
 
-		$orderby      = "f.depth, $orderby";
+		// Sort by depth just in case
+		$orderby = "f.depth, $orderby";
+
+
 		$orderby      = apply_filters( 'facetwp_facet_orderby', $orderby, $facet );
 		$from_clause  = apply_filters( 'facetwp_facet_from', $from_clause, $facet );
 		$where_clause = apply_filters( 'facetwp_facet_where', $where_clause, $facet );
-
-		// Limit
-		$limit = ctype_digit( $facet['count'] ) ? $facet['count'] : 20;
 
 		$sql = "
         SELECT f.facet_value, f.facet_display_value, f.term_id, f.parent_id, f.depth, COUNT(DISTINCT f.post_id) AS counter
         FROM $from_clause
         WHERE f.facet_name = '{$facet['name']}' $where_clause
         GROUP BY f.facet_value
-        ORDER BY $orderby
-        LIMIT $limit";
+        ORDER BY $orderby";
 
-		return $wpdb->get_results( $sql, ARRAY_A );
+		$output = $wpdb->get_results( $sql, ARRAY_A );
+
+
+		return $output;
 	}
 
-	/**
-	 * Generate the facet HTML
-	 */
 	function render( $params ) {
-		$this->settings[ $params['facet']['name'] ] = 'aasdasd';
-		$output                                     = '';
-		$facet                                      = $params['facet'];
-		$values                                     = (array) $params['values'];
-		$selected_values                            = (array) $params['selected_values'];
 
-		$values = FWP()->helper->sort_taxonomy_values( $params['values'], $facet['orderby'] );
+		$output          = '';
+		$facet           = $params['facet'];
+		$values          = (array) $params['values'];
+		$selected_values = (array) array_filter( $params['selected_values'] );
 
 		$label_any = empty( $facet['label_first'] ) ? __( 'Any', 'fwp' ) : $facet['label_first'];
 		$label_any = facetwp_i18n( $label_any );
+		$target    = null;
+		if ( ! empty( $facet['levels'] ) ) {
+			$target = 'data-target="1"';
+		}
+		$output .= '<select class="facetwp-hierarchy_select" data-level="0" ' . $target . '>';
+
+		$output .= '<option value="">' . esc_attr( $label_any ) . '</option>';
 
 		$options   = array();
-		$slugs_ids = array();
+		$level_ids = array();
+
 		foreach ( $values as $result ) {
-			if ( $result['depth'] > count( $facet['levels'] ) ) {
+
+			$selected = '';
+			if ( ! empty( $selected_values[ $result['depth'] ] ) && $result['facet_value'] == $selected_values[ $result['depth'] ] ) {
+				$level_ids[ $result['depth'] ] = $result['term_id'];
+				$selected                      = ' selected';
+			}
+
+			if ( ! empty( $level_ids[ $result['depth'] - 1 ] ) && $level_ids[ $result['depth'] - 1 ] != $result['parent_id'] ) {
 				continue;
 			}
-			$selected = in_array( $result['facet_value'], $selected_values ) ? ' selected' : '';
+
 
 			// Determine whether to show counts
 			$display_value = $result['facet_display_value'];
-			$show_counts   = apply_filters( 'facetwp_facet_hierarchy_select_show_counts', true, array( 'facet' => $facet ) );
+			$show_counts   = apply_filters( 'facetwp_facet_dropdown_show_counts', true, array( 'facet' => $facet ) );
 
 			if ( $show_counts ) {
 				$display_value .= ' (' . $result['counter'] . ')';
 			}
 
-			$options[ $result['depth'] ][]       = '<option data-parent="' . $result['parent_id'] . '" value="' . $result['facet_value'] . '"' . $selected . '>' . $display_value . '</option>';
-			$slugs_ids[ $result['facet_value'] ] = $result['term_id'];
+			$options[ $result['depth'] ][] = '<option value="' . $result['facet_value'] . '"' . $selected . '>' . $display_value . '</option>';
+		}
+		if ( ! empty( $options[0] ) ) {
+			$output .= implode( $options[0] );
 		}
 
-		foreach ( $options as $index => $option ) {
-			$label_level = empty( $facet['levels'][ ( $index - 1 ) ] ) ? __( 'Any', 'fwp' ) : $facet['levels'][ ( $index - 1 ) ];
-			$label_level = facetwp_i18n( $label_level );
+		$output .= '</select>';
 
-			$output .= '<select class="facetwp-hierarchy_select" data-level="' . $index . '">';
-			$output .= '<option value="">' . esc_attr( $label_level ) . '</option>';
-
-			$output .= implode( '', $option );
-
-			$output .= '</select>';
+		if ( ! empty( $facet['levels'] ) ) {
+			foreach ( $facet['levels'] as $level => $label ) {
+				$level += 1;
+				if ( empty( $selected_values[ $level - 1 ] ) || empty( $options[ $level ] ) ) {
+					continue;
+				}
+				$target = null;
+				if ( $level < count( $facet['levels'] ) ) {
+					$target = 'data-target="' . ( $level + 1 ) . '"';
+				}
+				$enabled = '';
+				if ( empty( $selected_values[ $level - 1 ] ) ) {
+					$enabled = ' disabled';
+				}
+				$output .= '<select class="facetwp-hierarchy_select" data-level="' . $level . '" ' . $target . $enabled . '>';
+				$output .= '<option value="">' . esc_attr( $label ) . '</option>';
+				if ( ! empty( $selected_values[ $level - 1 ] ) && ! empty( $options[ $level ] ) ) {
+					$output .= implode( $options[ $level ] );
+				}
+				$output .= '</select>';
+			}
 		}
-
-		ob_start();
-		//var_dump( $options );
-
-		//var_dump( $values );
-		$output .= ob_get_clean();
-
 
 		return $output;
+	}
+
+
+	function get_level( $parent, $depth = 0 ) {
+		$out = array();
+		foreach ( $this->terms as $term ) {
+			if ( $term->parent === $parent ) {
+				$out[ $term->slug ] = array(
+					'name' => $term->name,
+				);
+				if ( $depth < $this->depth ) {
+					$out[ $term->slug ]['children'] = $this->get_level( $term->term_id, $depth + 1 );
+				}
+			}
+		}
+
+		return $out;
+	}
+
+	function filter_posts( $params ) {
+		global $wpdb;
+
+		$facet           = $params['facet'];
+		$selected_values = $params['selected_values'];
+		$selected_values = is_array( $selected_values ) ? $selected_values[0] : $selected_values;
+
+		$sql = "
+    SELECT DISTINCT post_id FROM {$wpdb->prefix}facetwp_index
+    WHERE facet_name = '{$facet['name']}' AND facet_value IN ('$selected_values')";
+
+		return $wpdb->get_col( $sql );
 	}
 
 	/**
@@ -166,7 +194,6 @@ class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
                     $this.find('.facet-label-first').val(obj.label_first);
                     $this.find('.facet-parent-term').val(obj.parent_term);
                     $this.find('.facet-orderby').val(obj.orderby);
-                    $this.find('.facet-count').val(obj.count);
                     var wrapper = $this.find('.hierarchy-add-level-wrapper');
                     for (var l = 0; l < obj.levels.length; l++) {
                         var level = create_level(obj.levels[l]);
@@ -179,7 +206,6 @@ class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
                     obj['label_first'] = $this.find('.facet-label-first').val();
                     obj['parent_term'] = $this.find('.facet-parent-term').val();
                     obj['orderby'] = $this.find('.facet-orderby').val();
-                    obj['count'] = $this.find('.facet-count').val();
                     obj['levels'] = [];
                     $this.find('.facet-label-level').each(function () {
                         obj['levels'].push(this.value);
@@ -214,10 +240,11 @@ class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
                     </div>
                 </td>
                 <td>
-                    <input type="text" class="facet-label-level" value=""/> <input type="button"
-                                                                                   class="button button-small hierarchy-select-remove-level"
-                                                                                   style="margin: 1px;"
-                                                                                   value="<?php _e( 'Remove', 'fwp' ); ?>"/>
+                    <input type="text" class="facet-label-level" value="<?php esc_attr_e( 'Any', 'fwp' ); ?>"/> <input
+                            type="button"
+                            class="button button-small hierarchy-select-remove-level"
+                            style="margin: 1px;"
+                            value="<?php _e( 'Remove', 'fwp' ); ?>"/>
                 </td>
             </tr>
         </script>
@@ -256,16 +283,6 @@ class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
         </tr>
         <tr>
             <td>
-				<?php _e( 'Count', 'fwp' ); ?>:
-                <div class="facetwp-tooltip">
-                    <span class="icon-question">?</span>
-                    <div class="facetwp-tooltip-content"><?php _e( 'The maximum number of facet choices to show', 'fwp' ); ?></div>
-                </div>
-            </td>
-            <td><input type="text" class="facet-count" value="20"/></td>
-        </tr>
-        <tr>
-            <td>
 				<?php _e( 'First level label', 'fwp' ); ?>:
                 <div class="facetwp-tooltip">
                     <span class="icon-question">?</span>
@@ -288,12 +305,4 @@ class FacetWP_Facet_Hierarchy_Select extends FacetWP_Facet_Dropdown{
 		<?php
 	}
 
-	/**
-	 * Checks if the value is in the path
-	 */
-	private function is_in_path( $val, $path ) {
-		var_dump( $a );
-
-		return true;
-	}
 }
