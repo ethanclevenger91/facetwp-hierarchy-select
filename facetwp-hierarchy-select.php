@@ -30,7 +30,7 @@ class FacetWP_Facet_Hierarchy_Select
     function __construct() {
         $this->label = __( 'Hierarchy Select', 'fwp' );
 
-        add_filter( 'facetwp_store_unfiltered_post_ids', array( $this, 'store_unfiltered_post_ids' ) );
+        //add_filter( 'facetwp_store_unfiltered_post_ids', array( $this, 'store_unfiltered_post_ids' ) );
     }
 
 
@@ -135,6 +135,10 @@ class FacetWP_Facet_Hierarchy_Select
                 // Determine whether to show counts
                 $display_value = esc_attr( $result['facet_display_value'] );
                 $show_counts = apply_filters( 'facetwp_facet_dropdown_show_counts', true, array( 'facet' => $facet ) );
+
+                if ( $show_counts ) {
+                    $display_value .= ' (' . $result['counter'] . ')';
+                }
 
                 $output .= '<option value="' . esc_attr( $result['facet_value'] ) . '"' . $selected . '>' . $display_value . '</option>';
             }
