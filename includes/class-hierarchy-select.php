@@ -49,12 +49,11 @@ class FacetWP_Facet_Hierarchy_Select{
 
 		$orderby      = apply_filters( 'facetwp_facet_orderby', $orderby, $facet );
 		$from_clause  = apply_filters( 'facetwp_facet_from', $from_clause, $facet );
-		$where_clause = apply_filters( 'facetwp_facet_where', $where_clause, $facet );
 
 		$sql = "
         SELECT f.facet_value, f.facet_display_value, f.term_id, f.parent_id, f.depth, COUNT(DISTINCT f.post_id) AS counter
         FROM $from_clause
-        WHERE f.facet_name = '{$facet['name']}' $where_clause
+        WHERE f.facet_name = '{$facet['name']}'
         GROUP BY f.facet_value
         ORDER BY $orderby";
 
@@ -160,12 +159,12 @@ class FacetWP_Facet_Hierarchy_Select{
 		global $wpdb;
 
 		$facet           = $params['facet'];
-		$selected_values = $params['selected_values'];
-		$selected_values = is_array( $selected_values ) ? $selected_values[0] : $selected_values;
+		$selected_values = (array) $params['selected_values'];
+		$selected_value  = array_pop( $selected_values );
 
 		$sql = "
     SELECT DISTINCT post_id FROM {$wpdb->prefix}facetwp_index
-    WHERE facet_name = '{$facet['name']}' AND facet_value IN ('$selected_values')";
+    WHERE facet_name = '{$facet['name']}' AND facet_value IN ('$selected_value')";
 
 		return $wpdb->get_col( $sql );
 	}
@@ -202,6 +201,7 @@ class FacetWP_Facet_Hierarchy_Select{
                 });
 
                 wp.hooks.addFilter('facetwp/save/hierarchy_select', function ($this, obj) {
+                    obj['hierarchical'] = 'yes'; // locked.
                     obj['source'] = $this.find('.facet-source').val();
                     obj['label_first'] = $this.find('.facet-label-first').val();
                     obj['parent_term'] = $this.find('.facet-parent-term').val();
