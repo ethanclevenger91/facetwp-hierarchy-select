@@ -49,11 +49,12 @@ class FacetWP_Facet_Hierarchy_Select{
 
 		$orderby     = apply_filters( 'facetwp_facet_orderby', $orderby, $facet );
 		$from_clause = apply_filters( 'facetwp_facet_from', $from_clause, $facet );
+		$where_clause = apply_filters( 'facetwp_facet_where', $where_clause, $facet );
 
 		$sql = "
         SELECT f.facet_value, f.facet_display_value, f.term_id, f.parent_id, f.depth, COUNT(DISTINCT f.post_id) AS counter
         FROM $from_clause
-        WHERE f.facet_name = '{$facet['name']}'
+        WHERE f.facet_name = '{$facet['name']}' $where_clause
         GROUP BY f.facet_value
         ORDER BY $orderby";
 
