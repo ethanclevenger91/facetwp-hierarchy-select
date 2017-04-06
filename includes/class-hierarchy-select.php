@@ -84,7 +84,7 @@ class FacetWP_Facet_Hierarchy_Select{
 		$level_ids  = array();
 		$level_keys = array();
 		foreach ( $values as $result ) {
-			ob_start();
+
 			$selected = '';
 			if ( ! empty( $selected_values[ $result['depth'] ] ) && $result['facet_value'] == $selected_values[ $result['depth'] ] ) {
 				$level_ids[ $result['depth'] ] = $result['term_id'];
@@ -106,6 +106,7 @@ class FacetWP_Facet_Hierarchy_Select{
 
 			$options[ $result['depth'] ][]    = '<option value="' . $result['facet_value'] . '"' . $selected . '>' . $display_value . '</option>';
 			$level_keys[ $result['depth'] ][] = $result['facet_value'];
+
 		}
 		if ( ! empty( $options[0] ) ) {
 			$output .= implode( $options[0] );
@@ -118,7 +119,11 @@ class FacetWP_Facet_Hierarchy_Select{
 				$level += 1;
 
 				if ( empty( $selected_values[ $level - 1 ] ) || empty( $options[ $level ] ) || ! in_array( $selected_values[ $level - 1 ], $level_keys[ $level - 1 ] ) ) {
-					continue;
+					if( 'active' == $facet['display_type']){
+						continue;
+                    }else{
+						$options[ $level ] = false;
+                    }
 				}
 				$target = null;
 				if ( $level < count( $facet['levels'] ) ) {
@@ -136,8 +141,6 @@ class FacetWP_Facet_Hierarchy_Select{
 				$output .= '</select>';
 			}
 		}
-
-		$output .= ob_get_clean();
 
 		return $output;
 	}
@@ -194,6 +197,7 @@ class FacetWP_Facet_Hierarchy_Select{
 
                 wp.hooks.addAction('facetwp/load/hierarchy_select', function ($this, obj) {
                     $this.find('.facet-source').val(obj.source);
+                    $this.find('.facet-display-type').val(obj.display_type);
                     $this.find('.facet-label-first').val(obj.label_first);
                     $this.find('.facet-parent-term').val(obj.parent_term);
                     $this.find('.facet-orderby').val(obj.orderby);
@@ -207,6 +211,7 @@ class FacetWP_Facet_Hierarchy_Select{
                 wp.hooks.addFilter('facetwp/save/hierarchy_select', function ($this, obj) {
                     obj['hierarchical'] = 'yes'; // locked.
                     obj['source'] = $this.find('.facet-source').val();
+                    obj['display_type'] = $this.find('.facet-display-type').val();
                     obj['label_first'] = $this.find('.facet-label-first').val();
                     obj['parent_term'] = $this.find('.facet-parent-term').val();
                     obj['orderby'] = $this.find('.facet-orderby').val();
@@ -282,6 +287,15 @@ class FacetWP_Facet_Hierarchy_Select{
                     <option value="count"><?php _e( 'Highest Count', 'fwp' ); ?></option>
                     <option value="display_value"><?php _e( 'Display Value', 'fwp' ); ?></option>
                     <option value="raw_value"><?php _e( 'Raw Value', 'fwp' ); ?></option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td><?php _e( 'Display Type', 'fwp' ); ?>:</td>
+            <td>
+                <select class="facet-display-type">
+                    <option value="active"><?php _e( 'Show active dropdowns', 'fwp' ); ?></option>
+                    <option value="all"><?php _e( 'Show all dropdowns', 'fwp' ); ?></option>
                 </select>
             </td>
         </tr>
