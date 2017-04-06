@@ -47,8 +47,8 @@ class FacetWP_Facet_Hierarchy_Select{
 		$orderby = "f.depth, $orderby";
 
 
-		$orderby      = apply_filters( 'facetwp_facet_orderby', $orderby, $facet );
-		$from_clause  = apply_filters( 'facetwp_facet_from', $from_clause, $facet );
+		$orderby     = apply_filters( 'facetwp_facet_orderby', $orderby, $facet );
+		$from_clause = apply_filters( 'facetwp_facet_from', $from_clause, $facet );
 
 		$sql = "
         SELECT f.facet_value, f.facet_display_value, f.term_id, f.parent_id, f.depth, COUNT(DISTINCT f.post_id) AS counter
@@ -80,11 +80,11 @@ class FacetWP_Facet_Hierarchy_Select{
 
 		$output .= '<option value="">' . esc_attr( $label_any ) . '</option>';
 
-		$options   = array();
-		$level_ids = array();
-
+		$options    = array();
+		$level_ids  = array();
+		$level_keys = array();
 		foreach ( $values as $result ) {
-
+			ob_start();
 			$selected = '';
 			if ( ! empty( $selected_values[ $result['depth'] ] ) && $result['facet_value'] == $selected_values[ $result['depth'] ] ) {
 				$level_ids[ $result['depth'] ] = $result['term_id'];
@@ -104,7 +104,8 @@ class FacetWP_Facet_Hierarchy_Select{
 				$display_value .= ' (' . $result['counter'] . ')';
 			}
 
-			$options[ $result['depth'] ][] = '<option value="' . $result['facet_value'] . '"' . $selected . '>' . $display_value . '</option>';
+			$options[ $result['depth'] ][]    = '<option value="' . $result['facet_value'] . '"' . $selected . '>' . $display_value . '</option>';
+			$level_keys[ $result['depth'] ][] = $result['facet_value'];
 		}
 		if ( ! empty( $options[0] ) ) {
 			$output .= implode( $options[0] );
@@ -115,7 +116,8 @@ class FacetWP_Facet_Hierarchy_Select{
 		if ( ! empty( $facet['levels'] ) ) {
 			foreach ( $facet['levels'] as $level => $label ) {
 				$level += 1;
-				if ( empty( $selected_values[ $level - 1 ] ) || empty( $options[ $level ] ) ) {
+
+				if ( empty( $selected_values[ $level - 1 ] ) || empty( $options[ $level ] ) || ! in_array( $selected_values[ $level - 1 ], $level_keys[ $level - 1 ] ) ) {
 					continue;
 				}
 				$target = null;
@@ -134,6 +136,8 @@ class FacetWP_Facet_Hierarchy_Select{
 				$output .= '</select>';
 			}
 		}
+
+		$output .= ob_get_clean();
 
 		return $output;
 	}
