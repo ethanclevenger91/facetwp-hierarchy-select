@@ -30,7 +30,7 @@ class FacetWP_Facet_Hierarchy_Select
     function __construct() {
         $this->label = __( 'Hierarchy Select', 'fwp' );
 
-        //add_filter( 'facetwp_store_unfiltered_post_ids', array( $this, 'store_unfiltered_post_ids' ) );
+        add_filter( 'facetwp_store_unfiltered_post_ids', array( $this, 'store_unfiltered_post_ids' ) );
     }
 
 
@@ -56,40 +56,34 @@ class FacetWP_Facet_Hierarchy_Select
         // Sort by depth just in case
         $orderby = "f.depth, $orderby";
 
-        /*
-        // Properly handle "OR" facets
-        if ( 'or' == $facet['operator'] ) {
+        // Treat this facet in "OR" mode
+        if ( isset( FWP()->or_values ) && ( 1 < count( FWP()->or_values ) || ! isset( FWP()->or_values[ $facet['name'] ] ) ) ) {
+            $post_ids = array();
+            $or_values = FWP()->or_values; // Preserve the original
+            unset( $or_values[ $facet['name'] ] );
 
-            // Apply filtering (ignore the facet's current selections)
-            if ( isset( FWP()->or_values ) && ( 1 < count( FWP()->or_values ) || ! isset( FWP()->or_values[ $facet['name'] ] ) ) ) {
-                $post_ids = array();
-                $or_values = FWP()->or_values; // Preserve the original
-                unset( $or_values[ $facet['name'] ] );
-
-                $counter = 0;
-                foreach ( $or_values as $name => $vals ) {
-                    $post_ids = ( 0 == $counter ) ? $vals : array_intersect( $post_ids, $vals );
-                    $counter++;
-                }
-
-                // Return only applicable results
-                $post_ids = array_intersect( $post_ids, FWP()->unfiltered_post_ids );
-            }
-            else {
-                $post_ids = FWP()->unfiltered_post_ids;
+            $counter = 0;
+            foreach ( $or_values as $name => $vals ) {
+                $post_ids = ( 0 == $counter ) ? $vals : array_intersect( $post_ids, $vals );
+                $counter++;
             }
 
-            $post_ids = empty( $post_ids ) ? array( 0 ) : $post_ids;
-            $where_clause = ' AND post_id IN (' . implode( ',', $post_ids ) . ')';
+            // Return only applicable results
+            $post_ids = array_intersect( $post_ids, FWP()->unfiltered_post_ids );
         }
-        */
+        else {
+            $post_ids = FWP()->unfiltered_post_ids;
+        }
+
+        $post_ids = empty( $post_ids ) ? array( 0 ) : $post_ids;
+        $where_clause = ' AND post_id IN (' . implode( ',', $post_ids ) . ')';
 
         $orderby = apply_filters( 'facetwp_facet_orderby', $orderby, $facet );
         $from_clause = apply_filters( 'facetwp_facet_from', $from_clause, $facet );
         $where_clause = apply_filters( 'facetwp_facet_where', $where_clause, $facet );
 
         $sql = "
-        SELECT f.facet_value, f.facet_display_value, f.term_id, f.parent_id, f.depth, COUNT(DISTINCT f.post_id) AS counter
+        SELECT f.post_id, f.facet_value, f.facet_display_value, f.term_id, f.parent_id, f.depth, COUNT(DISTINCT f.post_id) AS counter
         FROM $from_clause
         WHERE f.facet_name = '{$facet['name']}' $where_clause
         GROUP BY f.facet_value
@@ -102,6 +96,30 @@ class FacetWP_Facet_Hierarchy_Select
 
 
     /**
+     * Filter out irrelevant choices
+     */
+    function filter_load_values( $values, $selected_values ) {
+        foreach ( $selected_values as $depth => $selected_value ) {
+            $selected_id = -1;
+
+            foreach ( $values as $key => $val ) {
+                if ( $selected_value == $val['facet_value'] ) { // save the parent_id
+                    $selected_id = $val['term_id'];
+                }
+
+                if ( $val['depth'] == ( $depth + 1 ) ) { // child of the selected value
+                    if ( $val['parent_id'] != $selected_id ) {
+                        unset( $values[ $key ] );
+                    }
+                }
+            }
+        }
+
+        return $values;
+    }
+
+
+    /**
      * Generate the facet HTML
      */
     function render( $params ) {
@@ -110,6 +128,7 @@ class FacetWP_Facet_Hierarchy_Select
         $facet = $params['facet'];
         $values = (array) $params['values'];
         $selected_values = (array) $params['selected_values'];
+        $values = $this->filter_load_values( $values, $selected_values );
 
         $num_active_levels = count( $selected_values );
         $levels = isset( $facet['levels'] ) ? (array) $facet['levels'] : array();
@@ -348,7 +367,6 @@ class FacetWP_Facet_Hierarchy_Select
     /**
      * Store unfiltered post IDs if this facet type exists
      */
-    /*
     function store_unfiltered_post_ids( $boolean ) {
         if ( FWP()->helper->facet_setting_exists( 'type', 'hierarchy_select' ) ) {
             return true;
@@ -356,5 +374,4 @@ class FacetWP_Facet_Hierarchy_Select
 
         return $boolean;
     }
-    */
 }
