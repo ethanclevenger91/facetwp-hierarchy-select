@@ -209,6 +209,7 @@ class FacetWP_Facet_Hierarchy_Select
         if (0 === obj.levels.length) {
             create_label($this);
         }
+        $this.find('.hierarchy-select-level:first .button').remove();
     });
 
     wp.hooks.addFilter('facetwp/save/hierarchy_select', function($this, obj) {
