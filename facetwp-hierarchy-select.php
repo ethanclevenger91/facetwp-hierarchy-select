@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) or exit;
  * FacetWP registration hook
  */
 function fwp_hierarchy_select_facet( $facet_types ) {
-    $facet_types['hierarchy_select'] = new FacetWP_Facet_Hierarchy_Select();
+    $facet_types['hierarchy_select'] = new FacetWP_Facet_Hierarchy_Select_Addon();
     return $facet_types;
 }
 add_filter( 'facetwp_facet_types', 'fwp_hierarchy_select_facet' );
@@ -23,7 +23,7 @@ add_filter( 'facetwp_facet_types', 'fwp_hierarchy_select_facet' );
 /**
  * Hierarchy Select facet class
  */
-class FacetWP_Facet_Hierarchy_Select
+class FacetWP_Facet_Hierarchy_Select_Addon
 {
 
     function __construct() {
