@@ -29,8 +29,6 @@ class FacetWP_Facet_Hierarchy_Select
 
     function __construct() {
         $this->label = __( 'Hierarchy Select', 'fwp' );
-
-        add_filter( 'facetwp_store_unfiltered_post_ids', array( $this, 'store_unfiltered_post_ids' ) );
     }
 
 
@@ -56,7 +54,7 @@ class FacetWP_Facet_Hierarchy_Select
         // Sort by depth just in case
         $orderby = "f.depth, $orderby";
 
-        // Treat this facet in "OR" mode
+        // Force "OR" mode
         if ( isset( FWP()->or_values ) && ( 1 < count( FWP()->or_values ) || ! isset( FWP()->or_values[ $facet['name'] ] ) ) ) {
             $post_ids = array();
             $or_values = FWP()->or_values; // Preserve the original
@@ -128,6 +126,8 @@ class FacetWP_Facet_Hierarchy_Select
         $facet = $params['facet'];
         $values = (array) $params['values'];
         $selected_values = (array) $params['selected_values'];
+
+        // Filter out irrelevant values
         $values = $this->filter_load_values( $values, $selected_values );
 
         $num_active_levels = count( $selected_values );
@@ -143,8 +143,9 @@ class FacetWP_Facet_Hierarchy_Select
                 }
 
                 $disabled = ( $level <= $num_active_levels ) ? '' : ' disabled';
+                $class = empty( $disabled ) ? '' : ' is-disabled';
                 $label = empty( $levels[ $level ] ) ? __( 'Any', 'fwp' ) : $levels[ $level ];
-                $output .= '<select class="facetwp-hierarchy_select" data-level="' . $level . '"' . $disabled . '>';
+                $output .= '<select class="facetwp-hierarchy_select' . $class . '" data-level="' . $level . '"' . $disabled . '>';
                 $output .= '<option value="">' . esc_attr( $label ) . '</option>';
             }
 
@@ -199,57 +200,61 @@ class FacetWP_Facet_Hierarchy_Select
 (function($) {
     wp.hooks.addAction('facetwp/load/hierarchy_select', function($this, obj) {
         $this.find('.facet-source').val(obj.source);
-        $this.find('.facet-display-type').val(obj.display_type);
         $this.find('.facet-parent-term').val(obj.parent_term);
         $this.find('.facet-orderby').val(obj.orderby);
-        var wrapper = $this.find('.hierarchy-add-level-wrapper');
+        var wrap = $this.find('.hierarchy-add-level-wrap');
         for (var l = 0; l < obj.levels.length; l++) {
-            var level = create_level(obj.levels[l]);
-            level.insertBefore(wrapper);
+            create_label($this, obj.levels[l]);
+        }
+        if (0 === obj.levels.length) {
+            create_label($this);
         }
     });
 
     wp.hooks.addFilter('facetwp/save/hierarchy_select', function($this, obj) {
-        obj['hierarchical'] = 'yes'; // locked.
         obj['source'] = $this.find('.facet-source').val();
-        obj['display_type'] = $this.find('.facet-display-type').val();
         obj['parent_term'] = $this.find('.facet-parent-term').val();
         obj['orderby'] = $this.find('.facet-orderby').val();
+        obj['hierarchical'] = 'yes'; // locked
+        obj['operator'] = 'or'; // locked
         obj['levels'] = [];
-        $this.find('.facet-label-level').each(function () {
+        $this.find('.facet-label-level').each(function() {
             obj['levels'].push(this.value);
         });
 
         return obj;
     });
 
-    function create_level(val) {
-        var template = $('#hierarchy-select-tmpl').html();
-        var $new_line = $(template);
+    function create_label($table, val) {
+        var $target = $table.find('.hierarchy-add-level-wrap');
+        var clone = $('#hierarchy-select-tpl').html();
+
+        var num_labels = $table.find('.hierarchy-select-level').length;
+        clone = clone.replace('{n}', num_labels);
+
+        var $tpl = $(clone);
 
         if (val) {
-            $new_line.find('.facet-label-level').val(val);
+            $tpl.find('.facet-label-level').val(val);
         }
 
-        return $new_line;
+        $tpl.insertBefore($target);
     }
 
-    $(document).on('click', '.hierarchy-add-level', function(e) {
-        var clicked = $(this);
-        var parent = clicked.closest('.hierarchy-add-level-wrapper');
-        var new_line = create_level();
-        new_line.insertBefore(parent);
+    $(document).on('click', '.hierarchy-add-level', function() {
+        var $table = $(this).closest('.facet-fields');
+        create_label($table);
     });
 
-    $(document).on('click', '.hierarchy-select-remove-level', function(e) {
+    $(document).on('click', '.hierarchy-select-remove-level', function() {
         $(this).closest('.hierarchy-select-level').remove();
     });
 })(jQuery);
 </script>
-<script type="text/html" id="hierarchy-select-tmpl">
+<script type="text/html" id="hierarchy-select-tpl">
     <tr class="hierarchy-select-level">
         <td>
-            <?php _e( "Depth {n} label", 'fwp' ); ?>:
+            <span class="facetwp-changeme"><?php _e( "Depth {n} label", 'fwp' ); ?></span>:
             <div class="facetwp-tooltip">
                 <span class="icon-question">?</span>
                 <div class="facetwp-tooltip-content">
@@ -276,10 +281,10 @@ class FacetWP_Facet_Hierarchy_Select
 (function($) {
     wp.hooks.addAction('facetwp/refresh/hierarchy_select', function($this, facet_name) {
         var selected_values = [];
-        $this.find('.facetwp-hierarchy_select option:selected').each(function () {
+        $this.find('.facetwp-hierarchy_select option:selected').each(function() {
             var value = $(this).attr('value');
             if (value.length) {
-                selected_values.push($(this).attr('value'));
+                selected_values.push(value);
             }
         });
         FWP.facets[facet_name] = selected_values;
@@ -345,33 +350,12 @@ class FacetWP_Facet_Hierarchy_Select
                 </select>
             </td>
         </tr>
-        <tr>
-            <td><?php _e( 'Display Type', 'fwp' ); ?>:</td>
-            <td>
-                <select class="facet-display-type">
-                    <option value="active"><?php _e( 'Show active dropdowns', 'fwp' ); ?></option>
-                    <option value="all"><?php _e( 'Show all dropdowns', 'fwp' ); ?></option>
-                </select>
-            </td>
-        </tr>
-        <tr class="hierarchy-add-level-wrapper">
+        <tr class="hierarchy-add-level-wrap">
             <td></td>
             <td>
-                <input type="button" class="hierarchy-add-level button button-small" style="width: 200px;" value="<?php _e( 'Add Label', 'fwp' ); ?>" />
+                <input type="button" class="hierarchy-add-level button button-small" style="width: 200px;" value="<?php esc_attr_e( 'Add Label', 'fwp' ); ?>" />
             </td>
         </tr>
     <?php
-    }
-
-
-    /**
-     * Store unfiltered post IDs if this facet type exists
-     */
-    function store_unfiltered_post_ids( $boolean ) {
-        if ( FWP()->helper->facet_setting_exists( 'type', 'hierarchy_select' ) ) {
-            return true;
-        }
-
-        return $boolean;
     }
 }
