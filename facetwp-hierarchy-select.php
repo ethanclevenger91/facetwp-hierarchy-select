@@ -127,7 +127,7 @@ class FacetWP_Facet_Hierarchy_Select
         $values = (array) $params['values'];
         $selected_values = (array) $params['selected_values'];
 
-        // Filter out irrelevant values
+        // Filter out irrelevant choices
         $values = $this->filter_load_values( $values, $selected_values );
 
         $num_active_levels = count( $selected_values );
@@ -200,7 +200,7 @@ class FacetWP_Facet_Hierarchy_Select
 (function($) {
     wp.hooks.addAction('facetwp/load/hierarchy_select', function($this, obj) {
         $this.find('.facet-source').val(obj.source);
-        $this.find('.facet-parent-term').val(obj.parent_term);
+        //$this.find('.facet-parent-term').val(obj.parent_term);
         $this.find('.facet-orderby').val(obj.orderby);
         var wrap = $this.find('.hierarchy-add-level-wrap');
         for (var l = 0; l < obj.levels.length; l++) {
@@ -213,7 +213,7 @@ class FacetWP_Facet_Hierarchy_Select
 
     wp.hooks.addFilter('facetwp/save/hierarchy_select', function($this, obj) {
         obj['source'] = $this.find('.facet-source').val();
-        obj['parent_term'] = $this.find('.facet-parent-term').val();
+        //obj['parent_term'] = $this.find('.facet-parent-term').val();
         obj['orderby'] = $this.find('.facet-orderby').val();
         obj['hierarchical'] = 'yes'; // locked
         obj['operator'] = 'or'; // locked
@@ -325,6 +325,7 @@ class FacetWP_Facet_Hierarchy_Select
     */
     function settings_html() {
     ?>
+    <?php /* ?>
         <tr>
             <td>
                 <?php _e( 'Parent term', 'fwp' ); ?>:
@@ -340,6 +341,7 @@ class FacetWP_Facet_Hierarchy_Select
                 <input type="text" class="facet-parent-term" value=""/>
             </td>
         </tr>
+    <?php */ ?>
         <tr>
             <td><?php _e( 'Sort by', 'fwp' ); ?>:</td>
             <td>
