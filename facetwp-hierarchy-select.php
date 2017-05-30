@@ -141,6 +141,7 @@ class FacetWP_Facet_Hierarchy_Select_Addon
                 $disabled = ( $level <= $num_active_levels ) ? '' : ' disabled';
                 $class = empty( $disabled ) ? '' : ' is-disabled';
                 $label = empty( $levels[ $level ] ) ? __( 'Any', 'fwp' ) : $levels[ $level ];
+                $label = facetwp_i18n( $label );
                 $output .= '<select class="facetwp-hierarchy_select' . $class . '" data-level="' . $level . '"' . $disabled . '>';
                 $output .= '<option value="">' . esc_attr( $label ) . '</option>';
             }
