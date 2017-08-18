@@ -2,7 +2,7 @@
 /*
 Plugin Name: FacetWP - Hierarchy Select
 Description: Hierarchy select facet type
-Version: 0.2
+Version: 0.2.1
 Author: FacetWP, LLC
 Author URI: https://facetwp.com/
 GitHub URI: facetwp/facetwp-hierarchy-select
@@ -208,7 +208,7 @@ class FacetWP_Facet_Hierarchy_Select_Addon
         $this.find('.hierarchy-select-level:first .button').remove();
     });
 
-    wp.hooks.addFilter('facetwp/save/hierarchy_select', function($this, obj) {
+    wp.hooks.addFilter('facetwp/save/hierarchy_select', function(obj, $this) {
         obj['source'] = $this.find('.facet-source').val();
         obj['orderby'] = $this.find('.facet-orderby').val();
         obj['hierarchical'] = 'yes'; // locked
