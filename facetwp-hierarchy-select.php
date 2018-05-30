@@ -2,7 +2,7 @@
 /*
 Plugin Name: FacetWP - Hierarchy Select
 Description: Hierarchy select facet type
-Version: 0.2.1
+Version: 0.3
 Author: FacetWP, LLC
 Author URI: https://facetwp.com/
 GitHub URI: facetwp/facetwp-hierarchy-select
