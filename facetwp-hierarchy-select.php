@@ -10,6 +10,7 @@ GitHub URI: facetwp/facetwp-hierarchy-select
 
 defined( 'ABSPATH' ) or exit;
 
+
 /**
  * FacetWP registration hook
  */
