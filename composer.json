@@ -1,0 +1,6 @@
+{
+    "name": "facetwp/facetwp-hierarchy-select",
+    "type": "wordpress-plugin",
+    "description": "Hierarchical select boxes facet for FacetWP",
+    "homepage": "https://facetwp.com/add-ons/hierarchy-select/"
+}
