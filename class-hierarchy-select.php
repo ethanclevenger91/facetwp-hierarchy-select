@@ -193,6 +193,7 @@ Vue.component('levels', {
                     <option value="count"><?php _e( 'Highest Count', 'fwp' ); ?></option>
                     <option value="display_value"><?php _e( 'Display Value', 'fwp' ); ?></option>
                     <option value="raw_value"><?php _e( 'Raw Value', 'fwp' ); ?></option>
+                    <option value="term_order"><?php _e( 'Term Order', 'fwp' ); ?></option>
                 </select>
                 <input type="hidden" class="facet-hierarchical" value="yes" />
                 <input type="hidden" class="facet-levels" value="[]" />
